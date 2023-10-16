@@ -1,11 +1,25 @@
-SELECT 
-      ACCOUNTID      as ACCOUNTID_CODE  -- TEXT
-    , SYMBOL         as SECURITY_CODE   -- TEXT
-    , DESCRITION     as SECURITY_NAME   -- TEXT
-    , EXCHANGE       as EXCHANGE_CODE   -- TEXT
-    , REPORT_DATE    as REPORT_DATE     -- DATE
-    , QUANTITY       as QUANTITY        -- NUMBER
-    , COST_BASE      as COST_BASE       -- NUMBER
-    , POSITION_VALUE as POSITION_VALUE  -- NUMBER
-    , CURRENCY       as CURRENCY_CODE   -- TEXT
-FROM {{ source('abc_bank', 'ABC_BANK_POSITION') }}
+WITH src_data AS (
+    SELECT 
+         ACCOUNTID      AS ACCOUNTID_CODE  -- TEXT
+        ,SYMBOL         AS SECURITY_CODE   -- TEXT
+        ,DESCRITION     AS SECURITY_NAME   -- TEXT
+        ,EXCHANGE       AS EXCHANGE_CODE   -- TEXT
+        ,REPORT_DATE    AS REPORT_DATE     -- DATE
+        ,QUANTITY       AS QUANTITY        -- NUMBER
+        ,COST_BASE      AS COST_BASE       -- NUMBER
+        ,POSITION_VALUE AS POSITION_VALUE  -- NUMBER
+        ,CURRENCY       AS CURRENCY_CODE   -- TEXT
+        ,'SOURCE_DATA.ABC_BANK_POSITION' AS RECORD_SOURCE
+    FROM {{ source('abc_bank', 'ABC_BANK_POSITION') }}
+)
+, hashed AS (
+    SELECT 
+         concat_ws('|', ACCOUNTID_CODE, SECURITY_CODE) AS POSITION_HKEY
+        ,concat_ws('|', ACCOUNTID_CODE, SECURITY_CODE, SECURITY_NAME, 
+            EXCHANGE_CODE, REPORT_DATE, QUANTITY, COST_BASE, POSITION_VALUE, CURRENCY_CODE) 
+            AS POSITION_HDIFF
+        ,*
+        ,'{{ run_started_at }}' AS LOAD_TS_UTC
+        FROM src_data
+)
+SELECT * FROM hashed
